@@ -44,7 +44,7 @@ def hello(request):
     visitor_name = sanitize_input(visitor_name)
     
     # Determine client IP
-    client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
+    client_ip = request.META.get('HTTP_X_REAL_IP', request.META.get('REMOTE_ADDR'))
     if isinstance(client_ip, list):
         client_ip = client_ip[0].strip()
     elif client_ip:
