@@ -43,6 +43,7 @@ def hello(request):
     
     # Determine client IP using geocoder
     client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
+    client_ip = str(client_ip).strip()
 
     city, temperature = get_weather_and_location(client_ip)
     if temperature is None:
