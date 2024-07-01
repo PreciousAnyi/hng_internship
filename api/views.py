@@ -15,13 +15,13 @@ def sanitize_input(input_string):
     return input_string
 
 def get_city_from_ip(ip):
-    """Retrieve city name based on the IP address using weatherapi."""
+    """Retrieve city name based on the IP address using WeatherAPI."""
+    api_key = settings.WEATHERAPI_KEY
     try:
-        api_key = settings.WEATHERAPI_KEY
         response = requests.get(f"http://api.weatherapi.com/v1/ip.json?key={api_key}&q={ip}")
         response.raise_for_status()
         data = response.json()
-        return data['city']
+        return data.get('city', 'Unknown')
     except (requests.exceptions.RequestException, KeyError, ValueError) as e:
         print(f"Error retrieving city from IP: {e}")
         return 'Unknown'
@@ -45,7 +45,12 @@ def hello(request):
     visitor_name = sanitize_input(visitor_name)
     
     # Determine client IP
-    client_ip = request.META.get('HTTP_X_REAL_IP', '8.8.8.8')
+    client_ip = request.META.get('HTTP_X_REAL_IP') or request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
+    if client_ip:
+        client_ip = client_ip.split(',')[0].strip()
+    else:
+        client_ip = '8.8.8.8'
+    
 
     city = get_city_from_ip(client_ip)
     city, temperature = get_weather_and_location(city)
