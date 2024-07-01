@@ -23,14 +23,15 @@ def get_weather_and_location(ip):
         location = geocoder.ip(ip)
         if location.city:
             city = location.city
-            api_key = settings.WEATHERAPI_KEY
-            response = requests.get(f"http://api.weatherapi.com/v1/current.json?key={api_key}&q={city}&aqi=no")
-            response.raise_for_status()
-            data = response.json()
-            temperature = data['current']['temp_c']
-            return city, temperature
         else:
-            return 'Unknown', None
+            city = "unknown"
+        api_key = settings.WEATHERAPI_KEY
+        response = requests.get(f"http://api.weatherapi.com/v1/current.json?key={api_key}&q={city}&aqi=no")
+        response.raise_for_status()
+        data = response.json()
+        temperature = data['current']['temp_c']
+        return city, temperature
+    
     except (requests.exceptions.RequestException, KeyError, ValueError) as e:
         print(f"Error retrieving weather and location data: {e}")
         return 'Unknown', None
@@ -41,7 +42,7 @@ def hello(request):
     visitor_name = sanitize_input(visitor_name)
     
     # Determine client IP using geocoder
-    client_ip = request.META.get('REMOTE_ADDR')
+    client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
 
     city, temperature = get_weather_and_location(client_ip)
     if temperature is None:
