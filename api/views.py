@@ -4,9 +4,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
 from .serializers import HelloSerializer
-import geocoder
 import requests
 import urllib.parse
+from ipinfo import getHandler
 
 def sanitize_input(input_string):
     """Sanitize and clean user input."""
@@ -16,19 +16,17 @@ def sanitize_input(input_string):
     return input_string
 
 def get_city_from_ip(ip):
-    """Retrieve city name based on the IP address using geocoder."""
+    """Retrieve city name based on the IP address using ipinfo."""
+    handler = getHandler(settings.IPINFO_API_KEY)
     try:
-        location = geocoder.ip(ip)
-        if location.ok and location.city:
-            return location.city
-        else:
-            return 'Unknown'
+        details = handler.getDetails(ip)
+        return details.city
     except Exception as e:
         print(f"Error retrieving city from IP: {e}")
         return 'Unknown'
 
 def get_weather_and_location(city):
-    """Retrieve weather information based on the city."""
+    """Retrieve weather information based on the city using WeatherAPI."""
     api_key = settings.WEATHERAPI_KEY
     try:
         response = requests.get(f"http://api.weatherapi.com/v1/current.json?key={api_key}&q={city}&aqi=no")
@@ -46,10 +44,11 @@ def hello(request):
     visitor_name = sanitize_input(visitor_name)
     
     # Determine client IP
-    client_ip = request.META.get('HTTP_X_REAL_IP') or request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
-    if client_ip:
-        client_ip = client_ip.split(',')[0].strip()
-        client_ip = f"'{client_ip}'"
+    client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
+    if isinstance(client_ip, list):
+        client_ip = client_ip[0].strip()
+    elif client_ip:
+        client_ip = str(client_ip).strip()
     else:
         client_ip = '8.8.8.8'  # Fallback to a default IP if not found
 
