@@ -49,6 +49,7 @@ def hello(request):
     client_ip = request.META.get('HTTP_X_REAL_IP') or request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
     if client_ip:
         client_ip = client_ip.split(',')[0].strip()
+        client_ip = f"'{client_ip}'"
     else:
         client_ip = '8.8.8.8'  # Fallback to a default IP if not found
 
