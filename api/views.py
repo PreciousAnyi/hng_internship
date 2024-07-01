@@ -17,10 +17,9 @@ def sanitize_input(input_string):
         input_string = input_string[1:-1]
     return input_string
 
-def get_weather_and_location(ip:str):
+def get_weather_and_location(location):
     """Retrieve weather and location information based on the IP address."""
     try:
-        location = geocoder.ip(ip)
         if location.city:
             city = location.city
         else:
@@ -42,9 +41,10 @@ def hello(request):
     visitor_name = sanitize_input(visitor_name)
     
     # Determine client IP using geocoder
+    location = geocoder.ip(request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR')))
     client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
 
-    city, temperature = get_weather_and_location(f"{client_ip}")
+    city, temperature = get_weather_and_location(location)
     if temperature is None:
         temperature = "unknown"
     
