@@ -4,7 +4,6 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.conf import settings
 from .serializers import HelloSerializer
-import geocoder
 import requests
 import urllib.parse
 
@@ -16,14 +15,14 @@ def sanitize_input(input_string):
     return input_string
 
 def get_city_from_ip(ip):
-    """Retrieve city name based on the IP address."""
+    """Retrieve city name based on the IP address using weatherapi."""
     try:
-        location = geocoder.ip(ip)
-        if location.ok:
-            return location.city or 'Unknown'
-        else:
-            return 'Unknown'
-    except Exception as e:
+        api_key = settings.WEATHERAPI_KEY
+        response = requests.get(f"http://api.weatherapi.com/v1/ip.json?key={api_key}&q={ip}")
+        response.raise_for_status()
+        data = response.json()
+        return data['city']
+    except (requests.exceptions.RequestException, KeyError, ValueError) as e:
         print(f"Error retrieving city from IP: {e}")
         return 'Unknown'
 
