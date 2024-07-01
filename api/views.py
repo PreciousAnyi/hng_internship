@@ -36,7 +36,7 @@ def get_weather_and_location(ip):
 @api_view(['GET'])
 def hello(request):
     visitor_name = request.GET.get('visitor_name', 'Guest')
-    client_ip = request.META.get('REMOTE_ADDR', '8.8.8.8')
+    client_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '8.8.8.8')).split(',')[0].strip()
 
     city, temperature = get_weather_and_location(client_ip)
     if temperature is None:
