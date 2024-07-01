@@ -45,14 +45,11 @@ def hello(request):
     visitor_name = sanitize_input(visitor_name)
     
     # Determine client IP
-    client_ip = request.META.get('HTTP_X_REAL_IP')
-    if isinstance(client_ip, list):
-        client_ip = client_ip[0].strip()
-    elif client_ip:
-        client_ip = str(client_ip).strip()
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        client_ip = x_forwarded_for.split(',')[0].strip()
     else:
-        client_ip = '8.8.8.8'  # Fallback to a default IP if not found
-
+        client_ip = request.META.get('REMOTE_ADDR', '8.8.8.8')
 
     city = get_city_from_ip(client_ip)
     city, temperature = get_weather_and_location(city)
