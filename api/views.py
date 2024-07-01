@@ -6,15 +6,27 @@ from django.conf import settings
 from .serializers import HelloSerializer
 import requests
 
+def get_city_from_ip(ip):
+    """Retrieve city name based on the IP address."""
+    try:
+        response = requests.get(f"https://api.weatherapi.com/v1/ip.json?key={settings.WEATHERAPI_KEY}&q={ip}")
+        response.raise_for_status()
+        data = response.json()
+        city = data['city']
+        return city
+    except requests.exceptions.RequestException as e:
+        print(f"Error retrieving city from IP: {e}")
+        return 'Lagos'
+
 
 def get_weather_and_location(ip):
     """Retrieve weather and location information based on the IP address."""
+    city = get_city_from_ip(ip)
     api_key = settings.WEATHERAPI_KEY
     try:
-        response = requests.get(f"http://api.weatherapi.com/v1/current.json?key={api_key}&q={ip}")
+        response = requests.get(f"http://api.weatherapi.com/v1/current.json?key={api_key}&q={city}&aqi=no")
         response.raise_for_status()
         data = response.json()
-        city = data['location']['name']
         temperature = data['current']['temp_c']
         return city, temperature
     except requests.exceptions.RequestException as e:
