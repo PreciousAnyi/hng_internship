@@ -8,6 +8,7 @@ from .serializers import UserSerializer, OrganizationSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from .serializers import LoginSerializer
+from django.core.exceptions import ValidationError
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -117,43 +118,45 @@ class OrganizationListView(generics.ListCreateAPIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        if serializer.is_valid():
+
+        if not serializer.is_valid():
+            errors = []
+            for field, messages in serializer.errors.items():
+                for message in messages:
+                    errors.append({'field': field, 'message': message})
+            return Response({
+                'errors': errors
+            }, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        
+        try:
+            
+            # Validation passed, proceed with organization creation
             org = self.perform_create(serializer)
+            
             return Response({
                 'status': 'success',
-                'message': 'Organisation created successfully',
+                'message': 'Organization created successfully',
                 'data': {
                     'orgId': org.orgId,
                     'name': org.name,
                     'description': org.description
                 }
             }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+        except Exception as e:
+            # Handle any other unexpected errors
+            return Response({
+                'status': 'Bad request',
+                'message': 'Client error',
+                'statusCode': status.HTTP_400_BAD_REQUEST
+            }, status=status.HTTP_400_BAD_REQUEST)
     
 class OrganizationDetailView(generics.RetrieveAPIView):
     queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
     permission_classes = [IsAuthenticated]
 
-class OrganizationCreateView(generics.CreateAPIView):
-    queryset = Organization.objects.all()
-    serializer_class = OrganizationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def perform_create(self, serializer):
-        org_name = serializer.validated_data['name']
-        org = serializer.save()
-        org.users.add(self.request.user)
-
-        return Response({
-            'status': 'success',
-            'message': 'Organisation created successfully',
-            'data': {
-                'orgId': org.orgId,
-                'name': org.name,
-                'description': org.description
-            }
-        }, status=status.HTTP_201_CREATED)
     
 class UserDetailView(generics.RetrieveAPIView):
     queryset = User.objects.all()
@@ -167,18 +170,6 @@ class UserDetailView(generics.RetrieveAPIView):
         self.check_object_permissions(self.request, obj)
         return obj
 
-class OrganizationDetailView(generics.RetrieveAPIView):
-    queryset = Organization.objects.all()
-    serializer_class = OrganizationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self):
-        queryset = self.get_queryset()
-        # Use 'pk' from URL to filter queryset
-        obj = get_object_or_404(queryset, orgId=self.kwargs['pk'])
-        self.check_object_permissions(self.request, obj)
-        return obj
-
 class AddUserToOrganizationView(generics.GenericAPIView):
     permission_classes = [IsAuthenticated]
 
@@ -187,17 +178,33 @@ class AddUserToOrganizationView(generics.GenericAPIView):
         user_id = request.data.get('userId')
 
         try:
+            # Attempt to retrieve organization and user
             organization = Organization.objects.get(orgId=org_id)
             user = User.objects.get(userId=user_id)
-        except (Organization.DoesNotExist, User.DoesNotExist):
+
+            # Add user to organization
+            organization.users.add(user)
+            
+            return Response({
+                'status': 'success',
+                'message': 'User added to organization successfully',
+            })
+
+        except Organization.DoesNotExist:
             return Response({
                 'status': 'Bad request',
-                'message': 'Organization or user not found',
-                'statusCode': 404
+                'message': 'Organization not found',
             }, status=status.HTTP_404_NOT_FOUND)
 
-        organization.users.add(user)
-        return Response({
-            'status': 'success',
-            'message': 'User added to organization successfully',
-        })
+        except User.DoesNotExist:
+            return Response({
+                'status': 'Bad request',
+                'message': 'User not found',
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        except ValidationError as e:
+            # Handle validation error for UUID format
+            return Response({
+                'status': 'Bad request',
+                'message': str(e),  # Display the validation error message
+            }, status=status.HTTP_400_BAD_REQUEST)

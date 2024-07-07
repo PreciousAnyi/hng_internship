@@ -28,6 +28,12 @@ class OrganizationSerializer(serializers.ModelSerializer):
         model = Organization
         fields = ['orgId', 'name', 'description']
 
+    def validate_name(self, value):
+        # Add custom validation for the 'name' field if needed
+        if len(value) < 1:
+            raise serializers.ValidationError("Required and cannot be null")
+        return value
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
