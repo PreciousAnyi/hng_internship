@@ -38,9 +38,7 @@ class LoginSerializer(serializers.Serializer):
 
 
         if email and password:
-            user = authenticate(email=email, password=password)
-            if user is None:
-                raise serializers.ValidationError('Invalid login credentials')
+            user = authenticate(username=email, password=password)
             data['user'] = user
         else:
             raise serializers.ValidationError('Must include "email" and "password"')

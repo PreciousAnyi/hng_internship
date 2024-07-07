@@ -21,32 +21,42 @@ class RegisterView(generics.CreateAPIView):
             for field, messages in serializer.errors.items():
                 for message in messages:
                     errors.append({'field': field, 'message': message})
-            return Response({'errors': errors}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+            return Response({
+                'errors': errors
+            }, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
-        self.perform_create(serializer)
-        user_data = serializer.data
-        user = User.objects.get(email=user_data['email'])
-        
-        # Create default organization
-        org_name = f"{user_data['firstName']}'s Organisation"
-        organization = Organization.objects.create(name=org_name)
-        organization.users.add(user)  # Add user to organization
+        try:
+            self.perform_create(serializer)
+            user_data = serializer.data
+            user = User.objects.get(email=user_data['email'])
+            
+            # Create default organization
+            org_name = f"{user_data['firstName']}'s Organisation"
+            organization = Organization.objects.create(name=org_name)
+            organization.users.add(user)  # Add user to organization
 
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'status': 'success',
-            'message': 'Registration successful',
-            'data': {
-                'accessToken': str(refresh.access_token),
-                'user': {
-                    'userId': user.userId,
-                    'firstName': user.firstName,
-                    'lastName': user.lastName,
-                    'email': user.email,
-                    'phone': user.phone,
+            refresh = RefreshToken.for_user(user)
+            return Response({
+                'status': 'success',
+                'message': 'Registration successful',
+                'data': {
+                    'accessToken': str(refresh.access_token),
+                    'user': {
+                        'userId': user.userId,
+                        'firstName': user.firstName,
+                        'lastName': user.lastName,
+                        'email': user.email,
+                        'phone': user.phone,
+                    }
                 }
-            }
-        }, status=status.HTTP_201_CREATED)
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({
+                'status': 'Bad request',
+                'message': 'Registration unsuccessful',
+                'statusCode': status.HTTP_400_BAD_REQUEST
+            })
 
 
 class LoginView(generics.GenericAPIView):
@@ -55,25 +65,42 @@ class LoginView(generics.GenericAPIView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            errors = []
+            for field, messages in serializer.errors.items():
+                for message in messages:
+                    errors.append({'field': field, 'message': message})
+            return Response({
+                'errors': errors
+            }, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
-        user = serializer.validated_data['user']
-        refresh = RefreshToken.for_user(user)
-
-        return Response({
-            'status': 'success',
-            'message': 'Login successful',
-            'data': {
-                'accessToken': str(refresh.access_token),
-                'user': {
-                    'userId': user.userId,
-                    'firstName': user.firstName,
-                    'lastName': user.lastName,
-                    'email': user.email,
-                    'phone': user.phone,
+        try:
+            # Proceed with authentication logic
+            user = serializer.validated_data['user']
+            # Generate tokens
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'status': 'success',
+                'message': 'Login successful',
+                'data': {
+                    'accessToken': str(refresh.access_token),
+                    'user': {
+                        'userId': user.userId,
+                        'firstName': user.firstName,
+                        'lastName': user.lastName,
+                        'email': user.email,
+                        'phone': user.phone,
+                    }
                 }
-            }
-        }, status=status.HTTP_200_OK)
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'status': 'Bad request',
+                'message': 'Authentication failed',
+                'statusCode': status.HTTP_401_UNAUTHORIZED
+            })
         
 class OrganizationListView(generics.ListCreateAPIView):
     queryset = Organization.objects.all()
